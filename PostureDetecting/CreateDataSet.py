@@ -1,12 +1,14 @@
 import time
+import mediapipe as mp
 import cv2
-
+import os
 from pandas import DataFrame
 import numpy as np
 import pandas as pd
 import datetime
-
-
+import GoogleDrive.UploadAndDownloadDrive as uadd
+from os import listdir
+from os.path import isfile, join
 
 def CreateDataSet(mp_drawing,mp_pose,mp_holistic,cap,type):
     pointscoords = []
@@ -57,8 +59,9 @@ def WriteToExcel(pointscoords,feat,type):
                     'LABEL': feat})
     df.drop(df.index[(len(df)//2)-6:(len(df)//2)+6], inplace=True)
     df.drop(df.index[(len(df) // 4) - 3:(len(df) // 4) + 9], inplace=True)
-    df.to_excel(f'{type}DataSet.xlsx', sheet_name='sheet1', index=False)
+    df.to_excel('D:\\pythonProject\\datasets\\CustomDataset.xlsx', sheet_name='sheet1', index=False)
     time.sleep(0.2)
+
 
 def CreateFeat(pointscoords,type):
     feat = [1 for i in range(len(pointscoords) // 4)] + [0 for i in range(len(pointscoords) // 4)] +[1 for i in range(len(pointscoords) // 4)] + [0 for i in range(len(pointscoords) // 4)]
@@ -70,15 +73,18 @@ def CreateFeat(pointscoords,type):
 
 def ReadFromExcel(type):
     if type == 'All':
-        for i in range(1,8):
-            if i==1:
-                data = pd.read_excel(f'User{i}DataSet.xlsx')
+        uadd
+        onlyfiles = [f for f in listdir('D:\\pythonProject\\datasets') if
+                     isfile(join('D:\\pythonProject\\datasets', f))]
+        for i in range(len(onlyfiles)):
+            if i==0:
+                data = pd.read_excel(f'D:\\pythonProject\\datasets\\{onlyfiles[i]}')
             else:
-                data = pd.concat([data,pd.read_excel(f'User{i}DataSet.xlsx')])
+                data = pd.concat([data,pd.read_excel(f'D:\\pythonProject\\datasets\\{onlyfiles[i]}')])
         fromxl = []
         feat = data['LABEL'].values
         for i in range(1, 4):
-            for sym in ['X', 'Y', 'Z']:
+            for sym in ['X', 'Y']:
                 fromxl.append(data[sym + str(i)].values)
         fromxl = np.transpose(fromxl)
     else:
@@ -87,26 +93,25 @@ def ReadFromExcel(type):
         fromxl = []
         feat=data['LABEL'].values
         for i in range(1,4):
-            for sym in ['X', 'Y','Z']:
+            for sym in ['X', 'Y']:
                 fromxl.append(data[sym + str(i)].values)
         fromxl = np.transpose(fromxl)
 
     return fromxl,data,feat
 
-def LiveTest(neiClassificator,mp_drawing,mp_pose,mp_holistic,cap):
+def LiveTest(classificator):
+    mp_drawing = mp.solutions.drawing_utils
+    mp_pose = mp.solutions.pose
+    mp_holistic = mp.solutions.holistic
+    cap = cv2.VideoCapture(0)
     tests = []
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
         while cap.isOpened():
             ret, frame = cap.read()
-
-            # Recolor image to RGB
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image.flags.writeable = False
-
-            # Make detection
             results = pose.process(image)
 
-            # Recolor back to BGR
             image.flags.writeable = True
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             shape = image.shape
@@ -114,25 +119,25 @@ def LiveTest(neiClassificator,mp_drawing,mp_pose,mp_holistic,cap):
             try:
                 landmarks = results.pose_landmarks.landmark
                 # Get coordinates
-                left_shoulder = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,
-                                 landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y,
-                                 landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].z]
-                nose = [landmarks[mp_pose.PoseLandmark.NOSE.value].x,
-                        landmarks[mp_pose.PoseLandmark.NOSE.value].y,
-                        landmarks[mp_pose.PoseLandmark.NOSE.value].z]
-                right_shoulder = [landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
-                                  landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
-                                  landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].z]
-
-
-
+                left_shoulder = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x
+                                , landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y
+                                 #,landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].z
+                                 ]
+                nose = [landmarks[mp_pose.PoseLandmark.NOSE.value].x
+                        ,landmarks[mp_pose.PoseLandmark.NOSE.value].y
+                        #,landmarks[mp_pose.PoseLandmark.NOSE.value].z
+                        ]
+                right_shoulder = [landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x
+                                  ,landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y
+                                  #,landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].z
+                                  ]
             except:
                 pass
 
             test = [left_shoulder + right_shoulder + nose]
             tests.append(left_shoulder + right_shoulder + nose)
 
-            verd = neiClassificator.predict(test)
+            verd = classificator.predict(test)
             if verd == 1:
                 text = 'Correct position'
                 color = (0, 230, 0)

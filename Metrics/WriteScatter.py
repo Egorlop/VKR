@@ -13,9 +13,7 @@ from sklearn.tree import DecisionTreeClassifier
 import PostureDetecting.CreateDataSet as cds
 
 
-def WriteScatter():
-    testdatasep, datapd,feat = cds.ReadFromExcel('Train')
-    print(datapd)
+def WriteScatter(datapd):
     colors = ['red', 'blue']
     labels = [0,1]
 
