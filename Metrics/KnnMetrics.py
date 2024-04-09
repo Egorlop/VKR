@@ -13,7 +13,7 @@ import PostureDetecting.Classificators as cl
 
 def GetBetterKNumber(testdata,testfeat,traindata,trainfeat,validatedata,validatefeat):
     fig, ax = plt.subplots(1, 1, figsize=(10, 7))
-    K_range = np.arange(3, 30, 1)
+    K_range = np.arange(3, 10, 1)
     acc = [[],[],[]]
 
     for k in K_range:
@@ -47,7 +47,7 @@ def GetBetterKNumber(testdata,testfeat,traindata,trainfeat,validatedata,validate
 
 def GetBetterRNumber(testdata,testfeat,traindata,trainfeat,validatedata,validatefeat):
     fig, ax = plt.subplots(1, 1, figsize=(10, 7))
-    K_range = np.arange(3, 30, 1)
+    K_range = np.arange(3, 10, 1)
     acc = [[],[],[]]
 
     for k in K_range:

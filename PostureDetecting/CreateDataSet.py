@@ -115,7 +115,6 @@ def LiveTest(classificator):
             image.flags.writeable = True
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             shape = image.shape
-            # Extract landmarks
             try:
                 landmarks = results.pose_landmarks.landmark
                 # Get coordinates
@@ -159,3 +158,45 @@ def LiveTest(classificator):
 
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
+
+def CreateLiveImage(frame,pose,mp_pose,mp_drawing,classificator):
+    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = pose.process(image)
+    image.flags.writeable = True
+    verd = 1
+    try:
+        landmarks = results.pose_landmarks.landmark
+        left_shoulder = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x
+            , landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y
+                         ]
+        nose = [landmarks[mp_pose.PoseLandmark.NOSE.value].x
+            , landmarks[mp_pose.PoseLandmark.NOSE.value].y
+                ]
+        right_shoulder = [landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x
+            , landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y
+                          ]
+        test = [left_shoulder + right_shoulder + nose]
+        verd = classificator.predict(test)
+        if verd == 1:
+            text = 'Correct position'
+            color = (246,205,60)
+            pos = (187, 41)
+        else:
+            text = 'Wrong position. Straighten up!'
+            #color = (63,114,175)
+            color = (202,187,233)
+            pos = (90,41)
+        cv2.rectangle(image, (0, 0), (640, 60), color, -1)
+        cv2.putText(image, text, pos,
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        # mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+        #                           mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+        #                           mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
+        #                           )
+    except:
+        text = 'Can`t see you'
+        color = (200, 0, 0)
+        cv2.rectangle(image, (0, 0), (640, 73), color, -1)
+        cv2.putText(image, text, (45, 41),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+    return image,verd
