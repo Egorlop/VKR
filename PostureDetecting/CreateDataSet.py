@@ -9,6 +9,7 @@ import datetime
 import GoogleDrive.UploadAndDownloadDrive as uadd
 from os import listdir
 from os.path import isfile, join
+import PostureDetecting.CreateDataSet as cds
 
 def CreateDataSet(mp_drawing,mp_pose,mp_holistic,cap,type):
     pointscoords = []
@@ -51,7 +52,7 @@ def CreateDataSet(mp_drawing,mp_pose,mp_holistic,cap,type):
                 break
     return pointscoords,mp_drawing,mp_pose,mp_holistic,cap
 
-def WriteToExcel(pointscoords,feat,type):
+def WriteToExcel(pointscoords,feat):
     transposepoints = np.transpose(pointscoords)
     df = DataFrame({'X1': transposepoints[0], 'Y1': transposepoints[1], 'Z1': transposepoints[2],
                     'X2': transposepoints[3], 'Y2': transposepoints[4], 'Z2': transposepoints[5],
@@ -63,7 +64,7 @@ def WriteToExcel(pointscoords,feat,type):
     time.sleep(0.2)
 
 
-def CreateFeat(pointscoords,type):
+def CreateFeat(pointscoords):
     feat = [1 for i in range(len(pointscoords) // 4)] + [0 for i in range(len(pointscoords) // 4)] +[1 for i in range(len(pointscoords) // 4)] + [0 for i in range(len(pointscoords) // 4)]
     for i in range(len(pointscoords) % 4):
         feat.append(0)
@@ -72,6 +73,7 @@ def CreateFeat(pointscoords,type):
 
 
 def ReadFromExcel(type):
+    print(type)
     if type == 'All':
         uadd
         onlyfiles = [f for f in listdir('D:\\pythonProject\\datasets') if
@@ -88,7 +90,7 @@ def ReadFromExcel(type):
                 fromxl.append(data[sym + str(i)].values)
         fromxl = np.transpose(fromxl)
     else:
-        data = pd.read_excel(f'{type}DataSet.xlsx')
+        data = pd.read_excel(f'D:\\pythonProject\\datasets\\{type}DataSet.xlsx')
         print(data)
         fromxl = []
         feat=data['LABEL'].values
@@ -159,11 +161,10 @@ def LiveTest(classificator):
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
 
-def CreateLiveImage(frame,pose,mp_pose,mp_drawing,classificator):
+def CreateLiveDetectorImage(frame,pose,mp_pose,mp_drawing,classificator):
     image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = pose.process(image)
     image.flags.writeable = True
-    verd = 1
     try:
         landmarks = results.pose_landmarks.landmark
         left_shoulder = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x
@@ -180,12 +181,12 @@ def CreateLiveImage(frame,pose,mp_pose,mp_drawing,classificator):
         if verd == 1:
             text = 'Correct position'
             color = (246,205,60)
-            pos = (187, 41)
+            pos = (187, 39)
         else:
             text = 'Wrong position. Straighten up!'
             #color = (63,114,175)
             color = (202,187,233)
-            pos = (90,41)
+            pos = (90,39)
         cv2.rectangle(image, (0, 0), (640, 60), color, -1)
         cv2.putText(image, text, pos,
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
@@ -200,3 +201,37 @@ def CreateLiveImage(frame,pose,mp_pose,mp_drawing,classificator):
         cv2.putText(image, text, (45, 41),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
     return image,verd
+
+def CreateLiveCreatingImage(frame,pose,mp_pose,mp_drawing,classificator,nowsec):
+    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = pose.process(image)
+    image.flags.writeable = True
+    image.flags.writeable = False
+    results = pose.process(image)
+    image.flags.writeable = True
+    landmarks = results.pose_landmarks.landmark
+    left_shoulder = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,
+                         landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y,
+                         landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].z]
+    nose = [landmarks[mp_pose.PoseLandmark.NOSE.value].x,
+                landmarks[mp_pose.PoseLandmark.NOSE.value].y,
+                landmarks[mp_pose.PoseLandmark.NOSE.value].z]
+    right_shoulder = [landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
+                          landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
+                          landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].z]
+    if  round(nowsec,1)//10 == 0 or round(nowsec,1)//10 == 2:
+        text = f'Stage {int((round(nowsec,1)//10))+1} - Take correct position'
+        color = (82,195,82)
+        pos = (187, 39)
+    else:
+        text = f'Stage {int((round(nowsec,1)//10))+1} - Take uncorrected position'
+        color = (235, 82, 82)
+        pos = (90, 39)
+    cv2.rectangle(image, (0, 0), (640, 73), color, -1)
+    cv2.putText(image, text , (20, 43),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(image, str(round(nowsec,1)) + ' sec', (520, 43),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+    res = (left_shoulder + right_shoulder + nose)
+
+    return image, res
