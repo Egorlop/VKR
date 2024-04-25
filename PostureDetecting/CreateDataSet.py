@@ -10,6 +10,14 @@ import GoogleDrive.UploadAndDownloadDrive as uadd
 from os import listdir
 from os.path import isfile, join
 import PostureDetecting.CreateDataSet as cds
+from PIL import ImageDraw, ImageFont, Image
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+fontpath = "seguisb.ttf"
+#fontpath = "C:\\Windows\\Fonts\\Arial.ttf"
+font = ImageFont.truetype(fontpath, 24)
 
 def CreateDataSet(mp_drawing,mp_pose,mp_holistic,cap,type):
     pointscoords = []
@@ -179,27 +187,28 @@ def CreateLiveDetectorImage(frame,pose,mp_pose,mp_drawing,classificator):
         test = [left_shoulder + right_shoulder + nose]
         verd = classificator.predict(test)
         if verd == 1:
-            text = 'Correct position'
+            text = 'Положение соответствует норме.'
             color = (246,205,60)
-            pos = (187, 39)
+            pos = (153, 13)
         else:
-            text = 'Wrong position. Straighten up!'
-            #color = (63,114,175)
+            text = 'Осанка нарушена. Выпрямитесь!'
             color = (202,187,233)
-            pos = (90,39)
+            pos = (153,13)
         cv2.rectangle(image, (0, 0), (640, 60), color, -1)
-        cv2.putText(image, text, pos,
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        # mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
-        #                           mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
-        #                           mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
-        #                           )
+        img_pil = Image.fromarray(image)
+        draw = ImageDraw.Draw(img_pil)
+        draw.text(pos, text, font=font)
+        image = np.array(img_pil)
     except:
-        text = 'Can`t see you'
+        text = 'Вас не видно.'
+        verd=1
         color = (200, 0, 0)
-        cv2.rectangle(image, (0, 0), (640, 73), color, -1)
-        cv2.putText(image, text, (45, 41),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        pos = (250, 13)
+        cv2.rectangle(image, (0, 0), (640, 60), color, -1)
+        img_pil = Image.fromarray(image)
+        draw = ImageDraw.Draw(img_pil)
+        draw.text(pos, text, font=font)
+        image = np.array(img_pil)
     return image,verd
 
 def CreateLiveCreatingImage(frame,pose,mp_pose,mp_drawing,classificator,nowsec):
@@ -220,18 +229,50 @@ def CreateLiveCreatingImage(frame,pose,mp_pose,mp_drawing,classificator,nowsec):
                           landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
                           landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].z]
     if  round(nowsec,1)//10 == 0 or round(nowsec,1)//10 == 2:
-        text = f'Stage {int((round(nowsec,1)//10))+1} - Take correct position'
+        text = f'Стадия {int((round(nowsec, 1) // 10)) + 1} \nЗаймите правильное положение'
         color = (82,195,82)
         pos = (187, 39)
     else:
-        text = f'Stage {int((round(nowsec,1)//10))+1} - Take uncorrected position'
+        text = f'Стадия {int((round(nowsec,1)//10))+1}\nЗаймите неправильное положение'
         color = (235, 82, 82)
         pos = (90, 39)
     cv2.rectangle(image, (0, 0), (640, 73), color, -1)
-    cv2.putText(image, text , (20, 43),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-    cv2.putText(image, str(round(nowsec,1)) + ' sec', (520, 43),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+    img_pil = Image.fromarray(image)
+    draw = ImageDraw.Draw(img_pil)
+    draw.text((30, 6), text, font=font)
+    draw.text((545, 20), str(round(nowsec,1)) + ' sec', font=font)
+    image = np.array(img_pil)
+
     res = (left_shoulder + right_shoulder + nose)
 
     return image, res
+
+def CreateStatsImage(period):
+    plt.rcParams['figure.figsize'] = [7, 5]
+    plt.xlabel('День')
+    plt.ylabel('Кол-во срабатываний/час')
+    df = pd.read_csv('UI/Stats.csv', encoding='utf-8', delimiter=';')
+    y = list(df['Кол-во срабатываний/час'])[0:90]
+    print(y)
+    y = [elem.replace(',', '.') for elem in y]
+    y = [float(elem) for elem in y]
+    if period == 'Месяц':
+        plt.title(f'Динамика улучшения осанки\n за последний месяц')
+        x = range(1,31)
+        y = y[0:30]
+        plt.plot(x, y, marker='*', color='y')
+        plt.savefig('Month' + ".png", format="png")
+    if period == 'Неделя':
+        plt.title(f'Динамика улучшения осанки\n за последнюю неделю')
+        x = range(1,8)
+        y=y[23:30]
+        plt.plot(x, y, marker='*', color='y')
+        plt.savefig('Week' + ".png", format="png")
+    if period == 'Квартал':
+        plt.title(f'Динамика улучшения осанки\n за последний квартал')
+        x = range(1,91)
+        y = y[0:90]
+        plt.plot(x, y, marker='*', color='y')
+        plt.savefig('Quat' + ".png", format="png")
+    plt.close()
+
