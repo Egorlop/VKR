@@ -13,9 +13,11 @@ import cv2
 import time
 from plyer import notification
 import chime
+import pandas as pd
 import GoogleDrive.UploadAndDownloadDrive as uadd
 import os
 import serial
+import matplotlib.pyplot as plt
 
 # s = serial.Serial('COM11')
 start = time.time()
@@ -28,20 +30,35 @@ vibr_flg = 0
 mes_flg = 0
 custom_flg = 0
 
-
 def SplitDataset(datasetxl, datasetfeat):
     x, testdata, y, testfeat = train_test_split(datasetxl, datasetfeat, test_size=0.2, train_size=0.8)
-    traindata, validatedata, trainfeat, validatefeat = train_test_split(x, y, test_size=0.25, train_size=0.75)
+    traindata, validatedata, trainfeat, validatefeat = train_test_split(x, y, test_size=0.2, train_size=0.8)
+    print(len(testfeat), len(trainfeat),len(validatefeat))
     return testdata, testfeat, traindata, validatedata, trainfeat, validatefeat
 
 
 def PickClassificator(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat):
-    bestRNumber, bestRAcc = km.GetBetterRNumber(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat)
-    bestKNumber, bestKAcc = km.GetBetterKNumber(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat)
-    if bestRAcc > bestKAcc:
-        classificator = cl.RForest(traindata, trainfeat, bestKNumber)
-    else:
-        classificator = cl.KNeighbors(traindata, trainfeat, bestKNumber)
+    bestRegrModel, bestRegrModelscore = km.GetRegrModel(traindata, trainfeat, validatedata, validatefeat)
+    bestRandModel, bestRandModelscore = km.GetBetterRNumber(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat)
+    bestKNeiModel, bestKNeiModelscore = km.GetBetterKNumber(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat)
+    bestXGBModel, bestXGBModelscore = km.GetBetterXGBModel(testdata, testfeat, traindata, trainfeat)
+    f_measures = {'KNeighbors':round(bestKNeiModelscore,4), 'RandomForest':round(bestRandModelscore,4),
+                  'XGBoost':round(bestXGBModelscore,4),'LogisticRegression':round(bestRegrModelscore,4)}
+    maximum_value = max(f_measures.values())
+    max_key = [k for k,v in f_measures.items() if v == maximum_value][0]
+    print(f_measures, max_key)
+    plt.bar(f_measures.keys(), f_measures.values(), width=0.8, color=['#ffa3ad','#ffe15f','#438add','#ffc25c'])
+    for x, y in zip(f_measures.keys(), f_measures.values()):
+        plt.text(x, 0.50,y, ha='center', va='bottom')
+    plt.show()
+    if max_key == 'LogisticRegression':
+        classificator = bestRegrModel
+    elif max_key == 'RandomForest':
+        classificator = bestRandModel
+    elif max_key == 'KNeighbors':
+        classificator = bestKNeiModel
+    elif max_key == 'XGBoost':
+        classificator = bestXGBModel
     return classificator
 
 
@@ -143,10 +160,12 @@ class MainWindow(QMainWindow):
 
     def create_classificator(self, type):
         if type == 'All':
-            datasetxl, datasetpd, datasetfeat = cds.ReadFromExcel('All')
+            validatedata,validatefeat,traindata,trainfeat,testdata,testfeat = cds.ReadFromExcel('All')
         else:
             datasetxl, datasetpd, datasetfeat = cds.ReadFromExcel('Custom')
-        testdata, testfeat, traindata, validatedata, trainfeat, validatefeat = SplitDataset(datasetxl, datasetfeat)
+        print(len(validatedata))
+        print(len(traindata))
+        print(len(testdata))
         self.classificator = PickClassificator(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat)
 
     def start_detecting(self):
@@ -217,7 +236,7 @@ class MainWindow(QMainWindow):
         global pointscoords
         feat = cds.CreateFeat(pointscoords)
         cds.WriteToExcel(pointscoords, feat)
-        uadd.UploadToDrive()
+        #uadd.UploadToDrive()
         self.ui.image_label_2.setText(QCoreApplication.translate("Detector",
                                                                  u"<html><head/><body><p align=\"center\">\u041f\u0430\u043c\u044f\u0442\u043a\u0430</p></body></html>",
                                                                  None))
@@ -253,5 +272,5 @@ class MainWindow(QMainWindow):
         end = time.time()
         self.ui.image_label_2.setPixmap(QPixmap.fromImage(image))
 
-        if end - start > 40:
+        if end - start > 80:
             self.finish_creating()

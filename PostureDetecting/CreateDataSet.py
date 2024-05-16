@@ -68,7 +68,8 @@ def WriteToExcel(pointscoords,feat):
                     'LABEL': feat})
     df.drop(df.index[(len(df)//2)-6:(len(df)//2)+6], inplace=True)
     df.drop(df.index[(len(df) // 4) - 3:(len(df) // 4) + 9], inplace=True)
-    df.to_excel('D:\\pythonProject\\datasets\\CustomDataset.xlsx', sheet_name='sheet1', index=False)
+    timer=str(datetime.datetime.now()).replace(' ', '_').replace(':', '-')[:-7]
+    df.to_excel(f'D:\\pythonProject\\datasets\\{timer}_DataSet.xlsx', sheet_name='sheet1', index=False)
     time.sleep(0.2)
 
 
@@ -83,20 +84,47 @@ def CreateFeat(pointscoords):
 def ReadFromExcel(type):
     print(type)
     if type == 'All':
-        uadd
-        onlyfiles = [f for f in listdir('D:\\pythonProject\\datasets') if
-                     isfile(join('D:\\pythonProject\\datasets', f))]
-        for i in range(len(onlyfiles)):
+        validationfiles = [f for f in listdir('D:\\pythonProject\\datasets\\Validation') if
+                     isfile(join('D:\\pythonProject\\datasets\\Validation', f))]
+        for i in range(len(validationfiles)):
             if i==0:
-                data = pd.read_excel(f'D:\\pythonProject\\datasets\\{onlyfiles[i]}')
+                data = pd.read_excel(f'D:\\pythonProject\\datasets\\Validation\\{validationfiles[i]}')
             else:
-                data = pd.concat([data,pd.read_excel(f'D:\\pythonProject\\datasets\\{onlyfiles[i]}')])
-        fromxl = []
-        feat = data['LABEL'].values
+                data = pd.concat([data,pd.read_excel(f'D:\\pythonProject\\datasets\\Validation\\{validationfiles[i]}')])
+        validationfromxl = []
+        validationfeat = data['LABEL'].values
         for i in range(1, 4):
-            for sym in ['X', 'Y']:
-                fromxl.append(data[sym + str(i)].values)
-        fromxl = np.transpose(fromxl)
+            for sym in ['X', 'Y','Z']:
+                validationfromxl.append(data[sym + str(i)].values)
+        validationfromxl = np.transpose(validationfromxl)
+        ################
+        trainfiles = [f for f in listdir('D:\\pythonProject\\datasets\\Train') if
+                     isfile(join('D:\\pythonProject\\datasets\\Train', f))]
+        for i in range(len(trainfiles)):
+            if i==0:
+                data = pd.read_excel(f'D:\\pythonProject\\datasets\\Train\\{trainfiles[i]}')
+            else:
+                data = pd.concat([data,pd.read_excel(f'D:\\pythonProject\\datasets\\Train\\{trainfiles[i]}')])
+        trainfromxl = []
+        trainfeat = data['LABEL'].values
+        for i in range(1, 4):
+            for sym in ['X', 'Y','Z']:
+                trainfromxl.append(data[sym + str(i)].values)
+        trainfromxl = np.transpose(trainfromxl)
+        ###########
+        testfiles = [f for f in listdir('D:\\pythonProject\\datasets\\Test') if
+                     isfile(join('D:\\pythonProject\\datasets\\Test', f))]
+        for i in range(len(testfiles)):
+            if i==0:
+                data = pd.read_excel(f'D:\\pythonProject\\datasets\\Test\\{testfiles[i]}')
+            else:
+                data = pd.concat([data,pd.read_excel(f'D:\\pythonProject\\datasets\\Test\\{testfiles[i]}')])
+        testfromxl = []
+        testfeat = data['LABEL'].values
+        for i in range(1, 4):
+            for sym in ['X', 'Y','Z']:
+                testfromxl.append(data[sym + str(i)].values)
+        testfromxl = np.transpose(testfromxl)
     else:
         data = pd.read_excel(f'D:\\pythonProject\\datasets\\{type}DataSet.xlsx')
         print(data)
@@ -107,7 +135,7 @@ def ReadFromExcel(type):
                 fromxl.append(data[sym + str(i)].values)
         fromxl = np.transpose(fromxl)
 
-    return fromxl,data,feat
+    return validationfromxl,validationfeat,trainfromxl,trainfeat,testfromxl,testfeat
 
 def LiveTest(classificator):
     mp_drawing = mp.solutions.drawing_utils
@@ -177,29 +205,37 @@ def CreateLiveDetectorImage(frame,pose,mp_pose,mp_drawing,classificator):
         landmarks = results.pose_landmarks.landmark
         left_shoulder = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x
             , landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y
+                         ,landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].z
                          ]
         nose = [landmarks[mp_pose.PoseLandmark.NOSE.value].x
             , landmarks[mp_pose.PoseLandmark.NOSE.value].y
+                ,landmarks[mp_pose.PoseLandmark.NOSE.value].z
                 ]
         right_shoulder = [landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x
             , landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y
+                          ,landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].z
                           ]
         test = [left_shoulder + right_shoulder + nose]
         verd = classificator.predict(test)
         if verd == 1:
-            text = 'Положение соответствует норме.'
-            color = (246,205,60)
+            text = 'Положение соответствует норме'
+            color = (82,195,82)
             pos = (153, 13)
         else:
             text = 'Осанка нарушена. Выпрямитесь!'
-            color = (202,187,233)
+            color = (235, 82, 82)
             pos = (153,13)
+        mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+                                  mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+                                  mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
+                                  )
         cv2.rectangle(image, (0, 0), (640, 60), color, -1)
         img_pil = Image.fromarray(image)
         draw = ImageDraw.Draw(img_pil)
         draw.text(pos, text, font=font)
         image = np.array(img_pil)
-    except:
+    except  Exception as e:
+        print(e)
         text = 'Вас не видно.'
         verd=1
         color = (200, 0, 0)
@@ -228,7 +264,7 @@ def CreateLiveCreatingImage(frame,pose,mp_pose,mp_drawing,classificator,nowsec):
     right_shoulder = [landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
                           landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
                           landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].z]
-    if  round(nowsec,1)//10 == 0 or round(nowsec,1)//10 == 2:
+    if  round(nowsec,1)//20 == 0 or round(nowsec,1)//20 == 2:
         text = f'Стадия {int((round(nowsec, 1) // 10)) + 1} \nЗаймите правильное положение'
         color = (82,195,82)
         pos = (187, 39)
@@ -236,6 +272,10 @@ def CreateLiveCreatingImage(frame,pose,mp_pose,mp_drawing,classificator,nowsec):
         text = f'Стадия {int((round(nowsec,1)//10))+1}\nЗаймите неправильное положение'
         color = (235, 82, 82)
         pos = (90, 39)
+    mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+                              mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+                              mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
+                              )
     cv2.rectangle(image, (0, 0), (640, 73), color, -1)
     img_pil = Image.fromarray(image)
     draw = ImageDraw.Draw(img_pil)
