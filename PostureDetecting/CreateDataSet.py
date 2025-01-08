@@ -225,10 +225,10 @@ def CreateLiveDetectorImage(frame,pose,mp_pose,mp_drawing,classificator):
             text = 'Осанка нарушена. Выпрямитесь!'
             color = (235, 82, 82)
             pos = (153,13)
-        mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
-                                  mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
-                                  mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
-                                  )
+        # mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+        #                           mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+        #                           mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
+        #                           )
         cv2.rectangle(image, (0, 0), (640, 60), color, -1)
         img_pil = Image.fromarray(image)
         draw = ImageDraw.Draw(img_pil)
@@ -272,10 +272,10 @@ def CreateLiveCreatingImage(frame,pose,mp_pose,mp_drawing,classificator,nowsec):
         text = f'Стадия {int((round(nowsec,1)//10))+1}\nЗаймите неправильное положение'
         color = (235, 82, 82)
         pos = (90, 39)
-    mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
-                              mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
-                              mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
-                              )
+    # mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+    #                           mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+    #                           mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
+    #                           )
     cv2.rectangle(image, (0, 0), (640, 73), color, -1)
     img_pil = Image.fromarray(image)
     draw = ImageDraw.Draw(img_pil)

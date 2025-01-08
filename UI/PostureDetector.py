@@ -38,18 +38,25 @@ def SplitDataset(datasetxl, datasetfeat):
 
 
 def PickClassificator(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat):
+    km.PreasureGist()
     bestRegrModel, bestRegrModelscore = km.GetRegrModel(traindata, trainfeat, validatedata, validatefeat)
-    bestRandModel, bestRandModelscore = km.GetBetterRNumber(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat)
-    bestKNeiModel, bestKNeiModelscore = km.GetBetterKNumber(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat)
+    bestRandModel, bestRandModelscore, infoR = km.GetBetterRNumber(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat)
+    bestKNeiModel, bestKNeiModelscore,infoK = km.GetBetterKNumber(testdata, testfeat, traindata, trainfeat, validatedata, validatefeat)
     bestXGBModel, bestXGBModelscore = km.GetBetterXGBModel(testdata, testfeat, traindata, trainfeat)
     f_measures = {'KNeighbors':round(bestKNeiModelscore,4), 'RandomForest':round(bestRandModelscore,4),
                   'XGBoost':round(bestXGBModelscore,4),'LogisticRegression':round(bestRegrModelscore,4)}
     maximum_value = max(f_measures.values())
     max_key = [k for k,v in f_measures.items() if v == maximum_value][0]
+    info = [infoK,infoR,' ',' ']
     print(f_measures, max_key)
+    fig, ax = plt.subplots(1, 1, figsize=(10, 7))
+    ax.set_title(f'Максимальное значение F-score при использовании координат X-Y-Z')
+    ax.set_xlabel(f'Model')
+    ax.set_ylabel(f'F-score')
     plt.bar(f_measures.keys(), f_measures.values(), width=0.8, color=['#ffa3ad','#ffe15f','#438add','#ffc25c'])
-    for x, y in zip(f_measures.keys(), f_measures.values()):
-        plt.text(x, 0.50,y, ha='center', va='bottom')
+    for x, y, z in zip(f_measures.keys(), f_measures.values(),info):
+        plt.text(x, (y/2)+0.03,y, ha='center', va='bottom')
+        plt.text(x, (y/2)-0.02, z, ha='center', va='bottom')
     plt.show()
     if max_key == 'LogisticRegression':
         classificator = bestRegrModel
@@ -59,6 +66,7 @@ def PickClassificator(testdata, testfeat, traindata, trainfeat, validatedata, va
         classificator = bestKNeiModel
     elif max_key == 'XGBoost':
         classificator = bestXGBModel
+    km.TestClassificator(classificator)
     return classificator
 
 
